@@ -167,8 +167,8 @@ class Game2048Env(gym.Env):
         self.__game.reset()
         # print("Game reset...")
         self.valid_movements = np.ones(4)
-        print("valid_movements")
-        print(self.valid_movements)
+        # print("valid_movements")
+        # print(self.valid_movements)
         return self.__game.get_board(), self.valid_movements
 
     def step(self, action):

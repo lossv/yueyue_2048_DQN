@@ -11,9 +11,9 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--size_board", type=int, default=4)
     parser.add_argument("--num_episodes", type=int, default=30000)  # 运行轮数
-    parser.add_argument("--learning_rate", type=float, default=0.0005)
+    parser.add_argument("--learning_rate", type=float, default=0.00025)
     parser.add_argument("--ep_update_target", type=int, default=10)
-    parser.add_argument("--decay_rate", type=float, default=0.00005)
+    parser.add_argument("--decay_rate", type=float, default=0.00001)
     parser.add_argument("--interval_mean", type=int, default=5)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--hidden_dim", type=int, default=64)
