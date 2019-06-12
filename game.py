@@ -183,3 +183,6 @@ class Game2048:
         self.__add_two_or_four()
         self.__add_two_or_four()
         return self.get_board()
+
+    def update_board(self, new_board):
+        self.__board = new_board

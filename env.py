@@ -1,3 +1,5 @@
+import random
+
 import gym
 import numpy as np
 import sys
@@ -7,9 +9,24 @@ from game import Game2048
 from gym import spaces
 from gym.utils import seeding
 
+INF = 100000000
+
 
 class InvalidMove(Exception):
     pass
+
+
+a = [1, 2, 3, 4, 2, 3, 4, 5, 3, 4, 5, 6, 4, 5, 6, 7]
+a = np.array(a).reshape(4, 4)
+
+b = [4, 5, 6, 7, 3, 4, 5, 6, 2, 3, 4, 5, 1, 2, 3, 4]
+b = np.array(b).reshape(4, 4)
+
+c = [7, 6, 5, 4, 6, 5, 4, 3, 5, 4, 3, 2, 4, 3, 2, 1]
+c = np.array(c).reshape(4, 4)
+
+d = [4, 3, 2, 1, 5, 4, 3, 2, 6, 5, 4, 3, 7, 6, 5, 4]
+d = np.array(d).reshape(4, 4)
 
 
 class Game2048Env(gym.Env):
@@ -19,9 +36,10 @@ class Game2048Env(gym.Env):
         self.__size_board = size_board
         self.__game = Game2048(size_board)
 
-        self.__zeros = 15
-        self.__smooth = 0.9
-        self.__var = - 0.9
+        self.__zeros = 2.7
+        self.__smooth = 0.1
+        self.__var = -1.1
+        self.__weight = 0.1
 
         # Numbers of possible movements
         self.action_space = spaces.Discrete(4)
@@ -47,47 +65,113 @@ class Game2048Env(gym.Env):
         self.__last_action = None
         self.__last_scores_move = None
 
-        print("Environment initialised...")
+        self.valid_movements = []
+
+        # print("Environment initialised...")
+
+    def get_maxweight(self):
+        board = np.array(self.__game.get_board())
+
+        l = list()
+
+        a1 = board * a
+        a1 = a1.sum()
+        l.append(a1)
+
+        b1 = board * b
+        b1 = b1.sum()
+        l.append(b1)
+
+        c1 = board * c
+        c1 = c1.sum()
+        l.append(c1)
+
+        d1 = board * d
+        d1 = d1.sum()
+        l.append(d1)
+
+        return max(l)
 
     def __reward_calculation(self, merged):
-        # 这里的reward。
         reward = 0
-        # 我觉得应该还可以把当前步数来进行计算，步数越多越好
-        # 1000个估计跑不出来啥东西～
-        # 回头在我电脑跑吧。。
-        # 你电脑太慢了。。。9代cpu路过。。
-        # 这个部分也要用gpu运算。不然太慢了。，如果不的话，这个部分就需要cpu很强才行
-        # 另外这块还有分布式训练，虽然你用不上，但是你知道也是不错的
 
-        cur_board_score = self.__game.get_board().max() * math.log(self.__game.get_board().sum(),2)
-                          # self.get_variance(self.__game.get_board()) * self.__var + \
+        # cur_board_score = self.__game.get_board().max() * math.log(self.__game.get_board().sum(), 2)
+        cur_board_score = self.__game.get_board().max() * math.log(self.__game.get_board().sum(), 2)
 
-        # 真zz。。。唉。都不更新值? 有什么卵用?
+        cur_board_score += math.log(self.get_maxweight(), 2) * 0.9
+
+        # cur_board_score -= self.get_variance(self.__game.get_board()) * self.__var
+
+        temp = math.log2(abs(self.eval_smoothness(self.__game.get_board()) * self.__smooth))
+
+        cur_board_score += abs(temp)
+
         if cur_board_score > self.__old_max:
             self.__old_max = cur_board_score
+
             reward += math.log(self.__old_max, 2) * 0.1
-        #
-        reward += self.get_zeros(self.__game.get_board().flatten()) * self.__zeros
-
-        reward -= self.get_variance(self.__game.get_board()) * self.__var
-
-        reward -= self.get_smooth(self.__game.get_board()) * self.__smooth
-
-        self.__old_max += reward
 
         reward += merged
 
         return reward
 
+    # def __reward_calculation(self, merged):
+    #     # 这里的reward。
+    #     reward = 0
+    #     # 我觉得应该还可以把当前步数来进行计算，步数越多越好
+    #     # 1000个估计跑不出来啥东西～
+    #     # 回头在我电脑跑吧。。
+    #     # 你电脑太慢了。。。9代cpu路过。。
+    #     # 这个部分也要用gpu运算。不然太慢了。，如果不的话，这个部分就需要cpu很强才行
+    #     # 另外这块还有分布式训练，虽然你用不上，但是你知道也是不错的
+    #
+    #     cur_board_score = self.__game.get_board().max() * math.log(self.__game.get_board().sum(), 2)
+    #     # self.get_variance(self.__game.get_board()) * self.__var + \
+    #
+    #     cur_board_score += self.get_zeros(self.__game.get_board().flatten()) * self.__zeros
+    #
+    #     cur_board_score -= self.get_variance(self.__game.get_board()) * self.__var
+    #
+    #     cur_board_score -= self.get_smooth(self.__game.get_board()) * self.__smooth
+    #
+    #     # 真zz。。。唉。都不更新值? 有什么卵用?
+    #     if cur_board_score > self.__old_max:
+    #         self.__old_max = cur_board_score
+    #         reward += math.log(self.__old_max, 2) * 0.1
+    #
+    #     self.__old_max += reward
+    #
+    #     reward += merged
+    #
+    #     return reward
+
+    def eval_smoothness(self, grid):
+        score_smooth = 0
+        for x in range(4):
+            for y in range(4):
+                s = INF
+                if x > 0:
+                    s = min(s, abs((grid[x][y] or 2) - (grid[x - 1][y] or 2)))
+                if y > 0:
+                    s = min(s, abs((grid[x][y] or 2) - (grid[x][y - 1] or 2)))
+                if x < 3:
+                    s = min(s, abs((grid[x][y] or 2) - (grid[x + 1][y] or 2)))
+                if y < 3:
+                    s = min(s, abs((grid[x][y] or 2) - (grid[x][y + 1] or 2)))
+                score_smooth -= s
+        # print("score_smooth = ", score_smooth)
+        return score_smooth + 0.0000000000001
+
     def reset(self):
         """Reset the game"""
         self.__game.reset()
         # print("Game reset...")
-        valid_movements = np.ones(4)
-        return (self.__game.get_board(), valid_movements)
+        self.valid_movements = np.ones(4)
+        print("valid_movements")
+        print(self.valid_movements)
+        return self.__game.get_board(), self.valid_movements
 
     def step(self, action):
-        # print("The enviroment will take a action:", self.__actions_legends[action])
         done = 0
         reward = 0
         try:
@@ -129,6 +213,23 @@ class Game2048Env(gym.Env):
         info_render += "\n"
         outfile.write(info_render)
         return outfile
+
+    def random_play(self):
+        action = random.randint(0, 3)
+        _, reward, done, _ = self.step(action)
+
+        print("reward = ", reward)
+        print("env done = ", done)
+
+        return reward, done
+
+    def get_board(self):
+        return self.__game.get_board()
+
+    """update board"""
+
+    def update_board(self, new_board):
+        self.__game.update_board(new_board)
 
     def get_actions_legends(self):
         return self.__actions_legends
@@ -195,3 +296,8 @@ class Game2048Env(gym.Env):
                     array = n - state[a, b]
                     sum += np.log(np.abs(array.sum() + 1))
         return sum
+
+    def validMove(self, m):
+        if self.valid_movements[m - 1]:
+            return True
+        return False
