@@ -37,9 +37,9 @@ class Game2048Env(gym.Env):
         self.__game = Game2048(size_board)
 
         self.__zeros = 2.7
-        self.__smooth = 0.1
+        self.__smooth = 1.1
         self.__var = -1.1
-        self.__weight = 0.1
+        self.__weight = 0.3
 
         # Numbers of possible movements
         self.action_space = spaces.Discrete(4)

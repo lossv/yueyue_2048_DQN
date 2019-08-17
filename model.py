@@ -49,7 +49,6 @@ class Net1(nn.Module):
         self.__out_layer = nn.Linear(hidden_dim_3, output_dim)
 
     def forward(self, features):
-        device = torch.device("cuda")
 
         input_to_hidden_1 = F.relu(self.__input_layer(features))
         hidden1_to_hidden2 = F.relu(self.__hiddem_layer_1(input_to_hidden_1))

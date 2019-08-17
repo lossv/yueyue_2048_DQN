@@ -339,7 +339,6 @@ class Agent2:
             # print(next_q_values.shape)
             target_q_values = reward + self.__gamma * (1 - done) * next_q_values
 
-        # Loss
         # loss = (q_values - target_q_values).pow(2).mean()
         loss = F.smooth_l1_loss(q_values, target_q_values.view(self.__batch_size, 1))
 
